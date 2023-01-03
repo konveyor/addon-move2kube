@@ -1,4 +1,4 @@
-module github.com/konveyor/tackle2-addon-move2kube
+module github.com/konveyor/addon-move2kube
 
 go 1.19
 

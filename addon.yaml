@@ -4,4 +4,4 @@ kind: Addon
 metadata:
   name: move2kube
 spec:
-  image: quay.io/hari_balagopal/tackle2-addon-move2kube:latest
+  image: quay.io/konveyor/addon-move2kube:latest
