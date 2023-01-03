@@ -1,5 +1,5 @@
-# addon-move2kube
-Konveyor addon integration code for Move2Kube
+# Tackle 2 Addon Move2Kube
 
-## Code of Conduct
-Refer to Konveyor's Code of Conduct [here](https://github.com/konveyor/community/blob/main/CODE_OF_CONDUCT.md).
+This project exposes Konveyor's Move2Kube tool https://github.com/konveyor/move2kube as an addon for Tackle2, enabling applications to have container images and Kubernetes manifests built for them.
+
+For further documentation see https://move2kube.konveyor.io/
