@@ -9,7 +9,7 @@ clean:
 build: ${BUILD_DIR}/${BIN_NAME}
 
 ${BUILD_DIR}/${BIN_NAME}:
-	go build -o ${BUILD_DIR}/${BIN_NAME}
+	go build -o ${BUILD_DIR}/${BIN_NAME} github.com/konveyor/addon-move2kube/cmd
 
 .PHONY: cbuild
 cbuild:

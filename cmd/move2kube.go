@@ -12,7 +12,6 @@ func runMove2Kube(input, output string) error {
 	if err := os.RemoveAll(output); err != nil {
 		return fmt.Errorf("failed to remove the output directory. Error: %w", err)
 	}
-	addon.Activity("Running Move2Kube transform on the input directory.")
 	cmd := command.Command{Path: "/usr/bin/move2kube"}
 	cmd.Options.Add("transform")
 	cmd.Options.Add("--source", input)
