@@ -5,3 +5,4 @@ metadata:
   name: move2kube
 spec:
   image: quay.io/konveyor/addon-move2kube:latest
+  imagePullPolicy: Always

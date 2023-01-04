@@ -10,6 +10,7 @@ import (
 	"os"
 	pathlib "path"
 
+	"github.com/konveyor/addon-move2kube/types"
 	"github.com/konveyor/tackle2-addon/repository"
 	"github.com/konveyor/tackle2-addon/ssh"
 	hub "github.com/konveyor/tackle2-hub/addon"
@@ -23,11 +24,18 @@ var (
 
 func main() {
 	addon.Run(func() error {
+		addon.Activity("version: v0.1.1")
 		addon.Activity("Fetching the application.")
 		application, err := addon.Task.Application()
 		if err != nil {
 			return fmt.Errorf("failed to get the application. Error: %w", err)
 		}
+
+		data := types.Data{}
+		if err := addon.DataWith(&data); err != nil {
+			return fmt.Errorf("failed to get data for running the addon. Error: %w", err)
+		}
+		addon.Activity("Running the addon with the config: %+v", data)
 
 		pwd, err := os.Getwd()
 		if err != nil {
@@ -44,9 +52,9 @@ func main() {
 		// items to be processed by the addon.
 		addon.Total(3)
 
-		addon.Activity("Fetching the input from the repository.")
-		inputDir := pathlib.Join(pwd, "input")
-		repo, err := repository.New(inputDir, application)
+		addon.Activity("Fetching the input from the repository: %+v", application.Repository)
+		repoDir := pathlib.Join(pwd, "input")
+		repo, err := repository.New(repoDir, application)
 		if err != nil {
 			return fmt.Errorf("failed to create a new repository object. Error: %w", err)
 		}
@@ -57,14 +65,15 @@ func main() {
 		addon.Activity("Fetched the input from the repo.")
 
 		addon.Activity("Running Move2Kube transform on the input directory.")
+		inputDir := pathlib.Join(repoDir, application.Repository.Path)
 		outputDir := pathlib.Join(application.Bucket, "output")
-		if err := runMove2Kube(inputDir, outputDir); err != nil {
+		if err := runMove2Kube(inputDir, outputDir, data); err != nil {
 			return fmt.Errorf("failed to run Move2Kube transform. Error: %w", err)
 		}
 		addon.Increment()
 		addon.Activity("Transformation finished.")
 
-		if err := commitResources(repo, inputDir, outputDir); err != nil {
+		if err := commitResources(repo, application.Repository.Branch, inputDir, outputDir); err != nil {
 			return fmt.Errorf("failed to commit the Move2Kube transform output. Error: %w", err)
 		}
 		addon.Increment()

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/konveyor/tackle2-addon/command"
 	"github.com/konveyor/tackle2-addon/repository"
@@ -109,8 +110,27 @@ func appTags(application *api.Application) map[string]uint {
 
 // commitResources commits the resources to the Git repo.
 // func commitResources(SourceDir, groupId, artifactId string) error {
-func commitResources(repo repository.Repository, inputDir, outputDir string) error {
-	// Copy the output to into the repo
+func commitResources(repo repository.Repository, repoBranch, inputDir, outputDir string) error {
+	if repoBranch == "" {
+		addon.Activity("Trying to detect the current branch.")
+		cmd := command.Command{
+			Path:    "/usr/bin/git",
+			Options: []string{"symbolic-ref", "HEAD", "2>/dev/null"},
+		}
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to get the current git branch. Error: %w", err)
+		}
+		repoBranchHead := string(cmd.Output)
+		repoBranch = strings.TrimPrefix(repoBranchHead, "refs/heads/")
+	}
+	addon.Activity("The current branch is '%s'", repoBranch)
+
+	// Create a new branch to store the output.
+	if err := repo.Branch("move2kube-output"); err != nil {
+		return fmt.Errorf("failed to switch to a new branch. Error: %w", err)
+	}
+
+	// Copy the output into the repo.
 	cmd := command.Command{
 		Path:    "/usr/bin/cp",
 		Options: []string{"-r", outputDir, "move2kube-output"},
@@ -120,89 +140,15 @@ func commitResources(repo repository.Repository, inputDir, outputDir string) err
 		return fmt.Errorf("failed to copy the output to the repo directory. Error: %w", err)
 	}
 
-	if err := repo.Branch("move2kube-output"); err != nil {
-		return fmt.Errorf("failed to switch to a new branch. Error: %w", err)
-	}
+	// Commit and push the output.
 	if err := repo.Commit([]string{"-A"}, "feat: add move2kube transform output"); err != nil {
 		return fmt.Errorf("failed to commit and push all the files. Error: %w", err)
 	}
 
-	// Copy the k8s resources to the output directory
-	// cmd := command.Command{
-	// 	Path: "/usr/bin/cp",
-	// 	Options: []string{
-	// 		"-r",
-	// 		pathlib.Join(SourceDir, "target", "classes", "META-INF", "jkube/"), ".",
-	// 		"output-------------------------------------------------",
-	// 	},
-	// 	Dir: SourceDir,
-	// }
-	// if err := cmd.Run(); err != nil {
-	// 	return fmt.Errorf("failed to copying resources. Error: %w", err)
-	// }
-
-	// Copy the Dockerfile to the output directory
-	// group := strings.ToLower(strings.Split(groupId, ".")[1])
-	// artifactId = strings.ToLower(artifactId)
-	// cmd = command.Command{
-	// 	Path: "/usr/bin/cp",
-	// 	Options: []string{
-	// 		pathlib.Join(SourceDir, "target", "docker", group, artifactId, "latest", "build", "Dockerfile"),
-	// 		pathlib.Join("output-------------------------------------------", "Dockerfile")},
-	// 	Dir: SourceDir,
-	// }
-	// if err := cmd.Run(); err != nil {
-	// 	return fmt.Errorf("failed to copying Dockerfile. Error: %w", err)
-	// }
-
-	// repG, ok := rep.(respository.Git)
-	// g := repository.Git{}
-	// addon.Activity("", g)
-
-	// cmd := command.Command{
-	// 	Path:    "/usr/bin/git",
-	// 	Options: []string{"config", "--global", "user.email", "tackle@konveyor.org"},
-	// 	Dir:     outputDir,
-	// }
-	// if err := cmd.Run(); err != nil {
-	// 	return fmt.Errorf("failed to set git config. Error: %w", err)
-	// }
-
-	// cmd = command.Command{
-	// 	Path:    "/usr/bin/git",
-	// 	Options: []string{"config", "--global", "user.name", "tackle"},
-	// 	Dir:     outputDir,
-	// }
-	// if err := cmd.Run(); err != nil {
-	// 	return fmt.Errorf("failed to set git config. Error: %w", err)
-	// }
-
-	// cmd = command.Command{
-	// 	Path:    "/usr/bin/git",
-	// 	Options: []string{"add", pathlib.Base("output-------------------------------------------")},
-	// 	Dir:     outputDir,
-	// }
-	// if err := cmd.Run(); err != nil {
-	// 	return fmt.Errorf("failed to adding k8s resources to git. Error: %w", err)
-	// }
-
-	// cmd = command.Command{
-	// 	Path:    "/usr/bin/git",
-	// 	Options: []string{"commit", "-m", "Add k8s resources"},
-	// 	Dir:     outputDir,
-	// }
-	// if err := cmd.Run(); err != nil {
-	// 	return fmt.Errorf("failed to committing k8s resources. Error: %w", err)
-	// }
-
-	// cmd = command.Command{
-	// 	Path:    "/usr/bin/git",
-	// 	Options: []string{"push"},
-	// 	Dir:     outputDir,
-	// }
-	// if err := cmd.Run(); err != nil {
-	// 	return fmt.Errorf("failed to pushing k8s resources. Error: %w", err)
-	// }
+	// Checkout the original branch for future runs.
+	if err := repo.Branch(repoBranch); err != nil {
+		return fmt.Errorf("failed to switch back to the original branch. Error: %w", err)
+	}
 
 	return nil
 }
