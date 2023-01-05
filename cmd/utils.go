@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	pathlib "path"
 	"strings"
 
 	"github.com/konveyor/tackle2-addon/command"
@@ -110,45 +112,79 @@ func appTags(application *api.Application) map[string]uint {
 
 // commitResources commits the resources to the Git repo.
 // func commitResources(SourceDir, groupId, artifactId string) error {
-func commitResources(repo repository.Repository, repoBranch, inputDir, outputDir string) error {
-	if repoBranch == "" {
+func commitResources(
+	repo repository.Repository,
+	repoDir,
+	inputBranch,
+	inputDir,
+	outputBranch,
+	outputDir,
+	transformOutputDir string,
+	skipConfig bool,
+	commitMessage string,
+) error {
+	if outputBranch == "" {
+		outputBranch = "move2kube-output"
+	}
+	if outputDir == "" {
+		outputDir = pathlib.Join(inputDir, "move2kube-output")
+	} else {
+		outputDir = pathlib.Join(repoDir, outputDir)
+	}
+	if commitMessage == "" {
+		commitMessage = "feat: add move2kube transform output"
+	}
+	if inputBranch == "" {
 		addon.Activity("Trying to detect the current branch.")
-		cmd := command.Command{
-			Path:    "/usr/bin/git",
-			Options: []string{"symbolic-ref", "HEAD", "2>/dev/null"},
-		}
-		if err := cmd.Run(); err != nil {
+		t1, err := getCurrentBranch()
+		if err != nil {
 			return fmt.Errorf("failed to get the current git branch. Error: %w", err)
 		}
-		repoBranchHead := string(cmd.Output)
-		repoBranch = strings.TrimPrefix(repoBranchHead, "refs/heads/")
+		inputBranch = t1
 	}
-	addon.Activity("The current branch is '%s'", repoBranch)
+	addon.Activity("The current branch is '%s'", inputBranch)
 
 	// Create a new branch to store the output.
-	if err := repo.Branch("move2kube-output"); err != nil {
+	if err := repo.Branch(outputBranch); err != nil {
 		return fmt.Errorf("failed to switch to a new branch. Error: %w", err)
 	}
 
 	// Copy the output into the repo.
-	cmd := command.Command{
-		Path:    "/usr/bin/cp",
-		Options: []string{"-r", outputDir, "move2kube-output"},
-		Dir:     inputDir,
+	if err := os.MkdirAll(outputDir, 0775); err != nil {
+		return fmt.Errorf("failed to create the output directory at path '%s'. Error: %w", outputDir, err)
 	}
+	filesToCopy := []string{"m2k-graph.json", "m2kconfig.yaml", "m2kqacache.yaml", transformOutputDir}
+	if skipConfig {
+		filesToCopy = []string{transformOutputDir}
+	}
+	cmd := command.Command{Path: "/usr/bin/cp"}
+	cmd.Options.Add("-r", filesToCopy...)
+	cmd.Options.Add(outputDir)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to copy the output to the repo directory. Error: %w", err)
 	}
 
 	// Commit and push the output.
-	if err := repo.Commit([]string{"-A"}, "feat: add move2kube transform output"); err != nil {
+	if err := repo.Commit([]string{"-A"}, commitMessage); err != nil {
 		return fmt.Errorf("failed to commit and push all the files. Error: %w", err)
 	}
 
 	// Checkout the original branch for future runs.
-	if err := repo.Branch(repoBranch); err != nil {
+	if err := repo.Branch(inputBranch); err != nil {
 		return fmt.Errorf("failed to switch back to the original branch. Error: %w", err)
 	}
 
 	return nil
+}
+
+func getCurrentBranch() (string, error) {
+	cmd := command.Command{
+		Path:    "/usr/bin/git",
+		Options: []string{"symbolic-ref", "HEAD", "2>/dev/null"},
+	}
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("failed to run the git symbolic-ref command. Error: %w", err)
+	}
+	repoBranchHead := string(cmd.Output)
+	return strings.TrimPrefix(repoBranchHead, "refs/heads/"), nil
 }
