@@ -66,14 +66,24 @@ func main() {
 
 		addon.Activity("Running Move2Kube transform on the input directory.")
 		inputDir := pathlib.Join(repoDir, application.Repository.Path)
-		outputDir := pathlib.Join(application.Bucket, "output")
-		if err := runMove2Kube(inputDir, outputDir, data); err != nil {
+		transformOutputDir := pathlib.Join(application.Bucket, "temp")
+		if err := runMove2Kube(inputDir, transformOutputDir, data); err != nil {
 			return fmt.Errorf("failed to run Move2Kube transform. Error: %w", err)
 		}
 		addon.Increment()
 		addon.Activity("Transformation finished.")
 
-		if err := commitResources(repo, application.Repository.Branch, inputDir, outputDir); err != nil {
+		if err := commitResources(
+			repo,
+			repoDir,
+			application.Repository.Branch,
+			inputDir,
+			data.OutputBranch,
+			data.OutputDir,
+			transformOutputDir,
+			data.DontCopyConfigToOutput,
+			data.CommitMessage,
+		); err != nil {
 			return fmt.Errorf("failed to commit the Move2Kube transform output. Error: %w", err)
 		}
 		addon.Increment()

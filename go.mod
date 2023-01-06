@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/konveyor/tackle2-addon v0.0.0-20221117172148-da5fa845cdbf
 	github.com/konveyor/tackle2-hub v0.0.0-20221215185426-a63c8eb5d1b2
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 )
 
 replace k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20181127025237-2b1284ed4c93
@@ -67,7 +68,6 @@ require (
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	gorm.io/datatypes v1.0.5 // indirect
 	gorm.io/driver/mysql v1.3.5 // indirect
 	gorm.io/gorm v1.23.8 // indirect
